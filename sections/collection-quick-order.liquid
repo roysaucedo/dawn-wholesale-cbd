@@ -1,0 +1,543 @@
+{{ 'quick-order-form.scss.css' | asset_url | stylesheet_tag }}
+
+{% if shop.metafields.shipping.list_price_type %}
+	{% assign list_price_type = shop.metafields.shipping.list_price_type %}
+{% else %}
+	{% assign list_price_type = 'MSRP' %}
+{% endif %}
+
+{% for tag in customer.tags %}
+	{% if tag == 'Salts Enabled' %}
+		{% assign easylockdownTagsNotLocked1 = true %}
+	{% endif %}
+{% endfor %}
+
+{% comment %} The Collections Array for QOF {% endcomment %}
+{% assign qofCollections = collection.metafields.qof.collections | split: '|' %}
+
+<div id="collection" class="rte wrapper main content main-wrapper" style="text-align: center;">
+
+	<section class="quick-order-forms">
+		{% comment %}
+			Page Header
+				- Page title or collection title
+				- Pill navigation to each section
+		{% endcomment %}
+		<header class="action-bar top clearfix">
+				<h1>
+					{% if template contains 'page' %}
+						{{ page.title }}
+					{% else %}
+						{{ collection.title }}
+					{% endif %}
+				</h1>
+				<!-- <nav id="collection-filters-container" class="cf-select-wrapper qof-navigation drag-scroll">
+					<ul id="collections-menu" class="qof-menu">
+						{% for handleName in qofCollections %}
+							{% assign collection = collections[handleName] %}
+
+							<li class="qof-menu-item">
+								<a href="#collection-{{handleName}}">{{ collection.title | replace: "Love", '<i class="highlight icon-heart"></i>' }}</a>
+							</li>
+								
+						{% endfor %}
+					</ul>
+				</nav> -->
+		</header>
+		<div id="collections">
+			{% for handleName in qofCollections %}
+				{% assign collection = collections[handleName] %}
+
+				{% comment %}
+					Lockout ILS Collection
+					TODO: Create ILS collection, replace with that collection ID
+				{% endcomment %}
+				{% if collection.id == 260682711196 %}
+					{% unless easylockdownTagsNotLocked1 %}
+						{% assign easylockdownON = true %}
+					{% endunless %}
+				{% endif %}
+				{% unless easylockdownON %}
+						<article class="qo-collection{% if collection.metafields['qof']['layout'] == 'simple' %} simple{% endif %}">
+
+							{% assign collection_banner_image = collection.metafields.qof.banner_image %}
+							<header id="collection-{{handleName}}" class="product-meta {% cycle 'odd', 'even' %}" tabindex="1">
+
+								<div class="collection-title-wrapper" style="background-image: url('{{ collection_banner_image }}')">
+									<a href="{{ collection.url | collection }}" class="collection-title-link">
+										<h2 class="collection-title">
+												{{ collection.title | replace: "Love", '<i class="highlight icon-heart"></i>' }}
+										</h2>
+									</a>
+								</div>
+
+								{% if collection.metafields.marketing.assets %}
+									<p class="marekting-assets-download">
+										<a class="download-link" href="{{collection.metafields.marketing.assets}}" download>
+											{% if collection.metafields.marketing.assets_label %}
+												{{collection.metafields.marketing.assets_label}}
+											{% else %}
+												Download {{ collection.title | replace: "Love", '<i class="highlight icon-heart"></i>' }} Digital Marketing Assets here
+											{% endif %}
+										</a>
+									</p>
+								{% endif %}
+
+								{% if collection.metafields['global']['shortDescription'] %}
+									<div class="short-description">
+										{{ collection.metafields['global']['shortDescription'] }}
+									</div>
+								{% else %}
+									<div class="short-description">
+										{{ collection.description }}
+									</div>
+								{% endif %}
+
+							</header>
+
+							{% comment %}
+								Start of product loop
+									- Product Image
+									- Title (Product Link or Outbound Link)
+									- SKU
+									- Size
+									- Inner Qty
+									- Wholesale Price
+									- Quantity
+									- Total
+							{% endcomment %} 
+							<ul class="qo-product-list">
+								{% comment %}Top Labels{% endcomment %}
+								<li class="top-labels" data-display-order="0">
+									<div class="label-product"><span class="label">Product</span></div>
+									<div class="label-strength"><span class="label">Strength</span></div>
+									<div class="label-sku"><span class="label">SKU</span></div>
+									<div class="label-packaging"><span class="label">Size</span></div>
+									<div class="label-inner"><span class="label">Inner Pack</span></div>
+									<div class="label-price"><span class="label">Wholesale Price</span></div>
+									<div class="label-inventory"><span class="label">Inventory</span></div>
+									<div class="label-quantity"><span class="label">Quantity (Each)</span></div>
+									<div class="label-total"><span class="label">Total</span></div>
+								</li>
+
+								{% for product in collection.products %}
+									{% if product.available %}
+										{% for variant in product.variants %}
+											
+											{% comment %} Wholesale_Club_Product_Prices Start {% endcomment %}
+												{% assign base_product = product %}
+												{% assign base_variant = variant %}
+
+												{% if shop.metafields.sawholesale['base_price'] == blank %}
+													{% assign base_price = 'compare_at_price' %}
+												{% else %}
+													{% assign base_price = shop.metafields.sawholesale['base_price'] %}
+												{% endif %}
+
+												{% assign saw_discount = 0 %}{% assign saw_has_discount = false %}
+
+												{% if customer.tags != blank %}
+													{% for mf in base_product.metafields.sawholesale %}
+														{% capture product_customer_tag %}{{ mf | first | replace: 'discount_', '' }}{% endcapture %}
+														{% if customer.tags contains product_customer_tag %}
+															{% assign saw_has_discount = true %}
+															{% assign discount_key = product_customer_tag | prepend: 'discount_' %}
+															{% assign price_key = product_customer_tag | prepend: 'price_' %}
+															{% assign saw_discount = base_product.metafields.sawholesale[discount_key] | divided_by: 100.0 %}
+														{% endif %}
+													{% endfor %}
+												{% endif %}
+
+												{% assign saw_discount = 1 | minus: saw_discount %}
+
+												{% if base_price == 'price' or base_variant.compare_at_price == blank  or base_variant.compare_at_price == 0 or base_variant.compare_at_price < base_variant.price %}
+													{% assign saw_variant_compare_at_price = base_variant.price %}
+												{% else %}
+													{% assign saw_variant_compare_at_price = base_variant.compare_at_price %}
+												{% endif %}
+
+												{% assign cpe = shop.metafields.sawholesale['cpe'] | default: "true" %}
+												{% if base_variant.metafields.sawholesale[price_key] != blank and cpe == "true" %}
+													{% assign saw_variant_price = base_variant.metafields.sawholesale[price_key] %}
+												{% else %}
+													{% assign saw_variant_price = saw_variant_compare_at_price | times: saw_discount %}
+												{% endif %}
+
+												{% if saw_has_discount == false or saw_variant_price >= saw_variant_compare_at_price %}
+													{% assign WCProduct_Price = base_product.price %}
+													{% assign WCProduct_ComparePrice = base_product.compare_at_price %}
+													{% assign WCProduct_PriceMin = base_product.price_min %}
+													{% assign WCProduct_ComparePriceMin = base_product.compare_at_price_min %}
+													{% assign WCProduct_PriceMax = base_product.price_max %}
+													{% assign WCProduct_ComparePriceMax = base_product.compare_at_price_max %}
+													{% assign WCProduct_VariantPrice = base_variant.price %}
+													{% assign WCProduct_VariantComparePrice = base_variant.compare_at_price %}
+												{% else %}   
+													{% assign WCProduct_Price = saw_variant_price %}
+													{% assign WCProduct_PriceMin = base_product.price_min | times: saw_discount %}
+													{% assign WCProduct_PriceMax = base_product.price_max | times: saw_discount %}
+													{% assign WCProduct_ComparePrice = saw_variant_compare_at_price %}
+													{% if base_product.compare_at_price_min != 0 %}{% assign WCProduct_ComparePriceMin = base_product.compare_at_price_min %}{% else %}{% assign WCProduct_ComparePriceMin = base_product.price_min %}{% endif %}
+													{% if base_product.compare_at_price_max != 0 %}{% assign WCProduct_ComparePriceMax = base_product.compare_at_price_max %}{% else %}{% assign WCProduct_ComparePriceMax = base_product.price_max %}{% endif %}
+													{% assign WCProduct_VariantPrice = saw_variant_price %}
+													{% assign WCProduct_VariantComparePrice = saw_variant_compare_at_price %}
+												{% endif %}
+											{% comment %} Wholesale_Club_Product_Prices End {% endcomment %}
+
+											{% comment %} Assign order value for products/variants {% endcomment %}
+											{% if variant.metafields.qof.order %}
+												{% assign product_order = variant.metafields.qof.order %}
+											{% elsif product.metafields.qof.order %}
+												{% assign product_order = product.metafields.qof.order %}
+											{% else %}
+												{% assign product_order = false %}
+											{% endif %}
+											<li 
+												class="qo-product {% cycle 'odd', 'even' %} prod-id-{{product.id}}" 
+												{% if product_order %}data-display-order="{{ product_order }}"{% endif %}>
+
+												<header class="product-meta">
+													<h3 class="product-title">
+														<a href="{{ product.url }}">
+															{% if variant.metafields.qof.display_name %}
+																{{variant.metafields.qof.display_name}}
+															{% elsif product.metafields.qof.display_name %}
+																{{product.metafields.qof.display_name}}
+															{% else %}
+																{{ product.title }}
+															{% endif %}
+														</a>
+													</h3>
+												</header>
+
+												{% if variant.featured_image %}
+													{% assign featured_image = variant.featured_image %}
+												{% else %}
+													{% assign featured_image = product.featured_image %}
+												{% endif %}
+												<div class="details product-image">
+														<a href="{{ product.url }}">
+															<img src="{{ featured_image | img_url: 'thumb' }}" height="50px" />
+														</a>
+												</div>
+
+												<div class="details strength">
+													<span class="label">Strength:</span>
+													<p>
+														{% if variant.metafields.package.cbd_strength %}
+															{{variant.metafields.package.cbd_strength}}
+														{% elsif product.metafields.package.cbd_strength %}
+															{{product.metafields.package.cbd_strength}}
+														{% endif %}
+													</p>
+												</div>
+
+												<div class="details qo-sku">
+													<span class="label">SKU:</span>
+													{% if variant.sku %}
+														<span class="value">{{variant.sku}}</span>
+													{% else %}
+														<span class="value">N/A</span>
+													{% endif %}
+												</div>
+
+												<div class="details package-type">
+													<span class="label">Size:</span>
+													{% if variant.metafields.package.type %}
+														{{variant.metafields.package.type}}
+													{% elsif product.metafields.package.type %}
+														{{product.metafields.package.type}}
+													{% else %}
+														<span class="value">N/A</span>
+													{% endif %}
+												</div>
+
+												{% if variant.metafields.package.inner %}
+													{% assign inner_amount = variant.metafields.package.inner %}
+												{% elsif product.metafields.package.inner %}
+													{% assign inner_amount = product.metafields.package.inner %}
+												{% else %}
+													{% assign inner_amount = '1' %}
+												{% endif %}
+
+												<div class="details inner-quantity">
+													<span class="label">Inner Pack:</span>
+													{% if inner_amount > '1' %}
+														<span class="value">{{ inner_amount }}</span>
+													{% else %}
+														<span class="value">N/A</span>
+													{% endif %}
+												</div>
+
+												<div class="details qo-price">
+													<span class="label">Wholesale Price:</span>
+
+													{% if saw_discount == 1 %}
+														<span class="price">
+															{{ WCProduct_VariantPrice | money }}
+														</span>
+													{% else %}
+														<span class="price">
+															{{ saw_variant_price | money }} 
+														</span>
+
+														{% comment %} Add Tax to Retail Price if this item charges Tax{% endcomment %}
+														{% if shop.metafields.shipping.include_retail_taxed %}
+															{% if variant.taxable %}
+																{% assign saw_variant_compare_at_price = saw_variant_compare_at_price | times: 1.2 %}
+															{% endif %}
+														{% endif %}
+														<span class="retail-price">{{ list_price_type }} <del>{{ saw_variant_compare_at_price | money }}</del>
+													{% endif %}
+												</div>
+
+												<div class="details qo-inventory">
+													<span class="label">Inventory</span>
+													<p>{{ variant.inventory_quantity }} In-Stock</p>
+												</div>
+
+												<div class="details qo-quantity">
+													<span class="label">Quantity (Each)</span>
+													<input onfocus="this.select()" class="quantity field" data-id="{{ variant.id }}" min="0" step="1" 
+														{% unless variant.inventory_management == blank or variant.inventory_policy == 'continue' %}
+															{% assign max = variant.inventory_quantity %}
+															{% for item in cart.items %}
+																{% if item.id == variant.id %}
+																	{% assign max = max | minus: item.quantity %}
+																{% endif %}
+															{% endfor %} 
+															max="{{ max }}" 
+														{% endunless %} 
+														oninput="validity.valid||(value='{{max}}');"
+														type="number" value="0" tabindex="1" />
+												</div>
+
+												<div class="details qo-total-price">
+													<span class="label">Total</span>
+													<input class="total field" type="text" value="{{ cart.currency.symbol }}0.00" disabled />
+												</div>
+
+												<div class="details qo-add-to-cart">
+													<input class="add-to-cart-order-form button button--primary btn btn-primary btn-lg btn_c right action-button action_button submit solid cart-checkout-button cart__checkout" type="submit" value="Add to cart" tabindex="1" /> 
+												</div>
+
+											</li>
+										{% endfor %}
+									{% endif %}
+								{% endfor %}
+							</ul>
+
+							{% comment %}
+								Add to cart button
+							{% endcomment %}
+							<footer class="qo-product-action">
+								<a href="#collection" class="backtop">Back to top</a>
+								<input class="add-to-cart-order-form button button--primary btn btn-primary btn-lg btn_c right action-button action_button submit solid cart-checkout-button cart__checkout" type="submit" value="Add to cart" tabindex="1" />
+								<div class="qo-all-total-price">
+									<span class="label">Sub Total:</span>
+									<input class="total field" type="text" value="{{ cart.currency.symbol }}0.00" disabled />
+								</div>
+							</footer>
+							
+						</article>
+				{% endunless %}
+
+			{%- endfor -%}
+		</div>
+
+	</section>
+</div>
+
+
+
+<script>
+	ShopifyQO = {}
+	ShopifyQO.itemsToAdd = [];
+	ShopifyQO.addItemstoTheCart = function() {
+		console.log(ShopifyQO.itemsToAdd)
+		if (ShopifyQO.itemsToAdd.length) {
+			var item = ShopifyQO.itemsToAdd.pop();
+			$.ajax({
+				url: '/cart/add',
+				dataType: 'json',
+				type: 'post',
+				data: item,
+				success: ShopifyQO.addItemstoTheCart,
+				error: ShopifyQO.addItemstoTheCart
+			});
+		} else {
+			$(".quantity").val("0").select();
+			// alert("Added to cart")
+			window.location.href = '/cart';
+		}
+	};
+
+	jQuery(function($) {
+		$('.quantity:first').focus();
+		// Fallback if validation doesn't work on input change
+		$('[max]').change(function() {
+				var max = parseInt($(this).attr('max'), 10);
+				var value = parseInt($(this).val(), 10) || 0;
+				if (value > max) { 
+					alert('We only have ' + max + ' of this item in stock');
+					$(this).val(max); 
+				}    
+		});
+
+		$('.add-to-cart-order-form').click(function(ev) {
+			ev.preventDefault() 
+			$('.add-to-cart-order-form').addClass('disabled').attr('disabled','disabled');
+			// Resetting.
+			ShopifyQO.itemsToAdd = [];
+			$('.quantity').each(function() {
+				var quantity = parseInt($(this).val(), 10);
+				if (quantity && $(this).attr('data-id')) {
+						ShopifyQO.itemsToAdd.push( { id: $(this).attr('data-id'), quantity: quantity } );
+				}
+			});     
+			if (ShopifyQO.itemsToAdd.length) {
+				ShopifyQO.addItemstoTheCart();
+			}
+			else {
+				alert('All quantities are set to zero.');
+				$('.add-to-cart-order-form').removeAttr('disabled').removeClass('disabled');
+			}
+		});
+	});
+
+	/*
+		* Multiply Price * Quantity = Total Price
+		* Add all Total Price for All Together Price
+	*/
+  
+ 
+	
+	$(document).ready(function(){
+		$('.qo-product').click(update_price);
+		$('.qo-product').keyup(update_price);
+		
+		// Prevent quanity value from being empty
+		$('.qo-product .quantity').focus(function() {
+			if( $(this).val() == '0' ) {
+				$(this).val('');
+			}
+		});
+		$('.qo-product .quantity').blur(function() {
+			if( $(this).val() == '' ) {
+				$(this).val('0');
+			}
+		});
+
+	});
+
+	var popUpActive;
+	function update_price() {
+		// Add price & quantity in row, show value in total
+		var totalPrice = $('.qo-total-price .total');
+		var thisTotalPrice = $(this).find(totalPrice);
+		var thisQuantity = $(this).find('.qo-quantity .quantity');
+		var thisPrice = $(this).find('.qo-price .price').text();
+		var subTotal = $('.qo-all-total-price .total');
+
+		// Show pop-up if reached max quantity
+		if (thisQuantity.val() == thisQuantity.attr('max')) {
+			var message = "Quantity Exceeds Stock on Hand"
+			quantityLimitPopup($(this).find('.qo-quantity'), message, 5000);
+		}
+
+		// Multiply Price & Quanity to display line item total
+		if (thisQuantity.val() != '') {
+			thisTotalPrice.val(
+				'{{ cart.currency.symbol }}' + (
+					parseFloat(thisQuantity.val()) * parseFloat(thisPrice.replace("{{ cart.currency.symbol }}", ""))
+				).toFixed(2)
+			);
+		} else {
+			thisTotalPrice.val(
+				'{{ cart.currency.symbol }}' + (
+						0 * parseFloat(thisPrice.replace("{{ cart.currency.symbol }}", ""))
+					).toFixed(2)
+			);
+		}
+
+		// Add up all line item totals to sub total
+		var sum = 0;
+		totalPrice.each(function(){
+			amount = $(this).val().replace("{{ cart.currency.symbol }}", "");
+			sum += parseFloat(amount);
+		})
+		subTotal.val('{{ cart.currency.symbol }}' + sum.toFixed(2));
+	}
+	
+	function quantityLimitPopup(l, m, t) {
+		var qlPopup = $('<div></div>').addClass('quantity-limit').html(m);
+		if(popUpActive != true) {
+			$(l).append(qlPopup);
+			popUpActive = true;
+		}
+		setTimeout(function() {
+			$('.quantity-limit').remove();
+			popUpActive = false;
+		}, t);
+	}
+	
+	/*
+	* Smooth Scrolling
+	*/
+	// Select all links with hashes
+	$('a[href*="#"]')
+	// Remove links that don't actually link to anything
+	.not('[href="#"]')
+	.not('[href="#0"]')
+	.click(function(event) {
+		// On-page links
+		if (
+			location.pathname.replace(/^\//, '') == this.pathname.replace(/^\//, '') 
+			&& 
+			location.hostname == this.hostname
+		) {
+			// Figure out element to scroll to
+			var target = $(this.hash);
+			target = target.length ? target : $('[name=' + this.hash.slice(1) + ']');
+			// Does a scroll target exist?
+			if (target.length) {
+				// Only prevent default if animation is actually gonna happen
+				event.preventDefault();
+				$('html, body').animate({
+					scrollTop: target.offset().top - 65
+				}, 1000, function() {
+					// Callback after animation
+					// Must change focus!
+					var $target = $(target);
+					$target.focus();
+					if ($target.is(":focus")) { // Checking if the target was focused
+						return false;
+					} else {
+						$target.attr('tabindex','-1'); // Adding tabindex for elements not focusable
+						$target.focus(); // Set focus again
+					};
+				});
+			}
+		}
+	});
+
+</script>
+
+{% comment %}
+	Reorder products based on data attribute: data-display-order
+	Use liquid to identify which collection has product reordering enabled.
+{% endcomment %}
+{% for handleName in qofCollections %}
+	{% assign collection = collections[handleName] %}
+	{% if collection.metafields.qof.reorder == 'true' %}
+		<script>
+			// Reorder products - {{handleName}}
+			var products = $('#collection-{{handleName}} + .qo-product-list li');
+			products.sort(function(a, b){
+					return $(a).data("display-order")-$(b).data("display-order")
+			});
+			$("#collection-{{handleName}} + .qo-product-list").html(products);
+		</script>
+	{% endif %}
+{% endfor %}
+
